@@ -95,7 +95,7 @@ def acceleration():
         else:
             index += 1
 
-        time.sleep(0.08)
+        time.sleep(0.03)
 
 
 
