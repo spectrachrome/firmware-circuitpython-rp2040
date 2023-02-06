@@ -5,11 +5,14 @@
 
 import time
 import board
+import busio
 from rainbowio import colorwheel
 import neopixel
 import adafruit_adxl34x
 import math
 import wifi
+import digitalio
+
 
 # Get WiFi details from `secrets.py`` file
 try:
@@ -22,12 +25,26 @@ try:
 except ImportError:
     print("WiFi secrets are kept in secrets.py, please add them there!")
     raise
+"""
+cs = digitalio.DigitalInOut(board.GP17)
+cs.direction = digitalio.Direction.OUTPUT
+cs.value = True
 
+chip_select = cs
 
-led = neopixel.NeoPixel(board.IO37, 7, bpp=4, pixel_order=neopixel.GRBW)
+SPI0_RX = board.GP16
+SPI0_CS = board.GP17
+SPI0_CLK = board.GP18
+SPI0_TX = board.GP19
+
+# Function signature is `busio.SPI(clock, MOSI, MISO)`
+spi = busio.SPI(SPI0_CLK, SPI0_TX)
+led = neopixel_spi.NeoPixel_SPI(spi, 7, bpp=4, pixel_order=neopixel_spi.GRBW)
+"""
+led = neopixel.NeoPixel(board.GP19, 7, bpp=4, pixel_order=neopixel.GRBW)
 led.brightness = 0.1
 
-i2c = board.I2C()
+i2c = busio.I2C(board.GP13, board.GP12)
 accelerometer = adafruit_adxl34x.ADXL343(i2c)
 
 def rainbow(delay):
@@ -39,41 +56,46 @@ def acceleration():
     average = [0 for i in range(20)]
     index = 0
 
-    #last = 0.0
-    #current = 0.0
+    last_value = 0.1
+    current_value = 0.1
 
     has_turned_red = False
 
     while True:
         (x, y, z) = accelerometer.acceleration
 
-        #last = current
+        last_value = current_value
 
-        average[index] = math.sqrt(x ** 2 + y ** 2 + z ** 2)
+        #print(f"{x}, {y}, {z}")
+
+        current_value = math.sqrt(x ** 2 + y ** 2 + z ** 2)
+        average[index] = abs(current_value - last_value)
         sum = 0.0
         for v in average:
             sum += v
         delta = sum / len(average)
-        hue = abs(90 - (delta - 9.5) * 90)
-        print(round(abs(delta - 9.5)))
+        #current_value = math.sqrt(x ** 2 + y ** 2 + z ** 2)
+        #delta = abs(current_value - last_value)
+        hue = 90 - delta * 90
+        print(average[index])
 
         if hue < 0: hue = 0
         if hue > 90: hue = 90
 
         c = colorwheel(hue)
 
-        #current = math.sqrt(x ** 2 + y ** 2 + (z) ** 2)
-        #delta = abs(current - last)
+        #current_value = math.sqrt(x ** 2 + y ** 2 + (z) ** 2)
+        #delta = abs(current_value - last_value)
         #hue = 90 - delta * 90
 
         led.fill(c)
 
-        if index == len(average) - 1:
+        if index >= len(average) - 1:
             index = 0
         else:
             index += 1
 
-        time.sleep(0.05)
+        time.sleep(0.08)
 
 
 
